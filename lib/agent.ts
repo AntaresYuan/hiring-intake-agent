@@ -6,6 +6,8 @@ import {
   lookupRole,
   archetypeForPrompt,
   detectBudgetLevelConflict,
+  parseDailyWage,
+  parseMonthlySalary,
 } from "./kb";
 import {
   AgentTurnResult,
@@ -71,12 +73,17 @@ export async function runTurn(input: TurnInput): Promise<AgentTurnResult> {
   }
 
   // --- 3. 代码侧后置：数值冲突、停止判定、推导链核查 ---
-  return applyWorkflow(result);
+  return applyWorkflow(result, latestUserText(input.history));
 }
 
 /** 对 LLM 产出的状态叠加确定性的 workflow 结果 */
-export function applyWorkflow(result: AgentTurnResult): AgentTurnResult {
+export function applyWorkflow(
+  result: AgentTurnResult,
+  latestUserMessage = ""
+): AgentTurnResult {
   const state = result.state;
+
+  patchStateFromUserMessage(state, latestUserMessage);
 
   // 数值型冲突（预算 vs 职级）—— 代码侧检测后合并
   const arch = lookupRole(state.role_title);
@@ -102,7 +109,13 @@ export function applyWorkflow(result: AgentTurnResult): AgentTurnResult {
     ),
   };
 
-  return { ...result, state, handoff, diagnosis };
+  return {
+    ...result,
+    reply: guardHandoffReply(result.reply, handoff),
+    state,
+    handoff,
+    diagnosis,
+  };
 }
 
 /** 宽松判断一段文本是否像可解析的完整 JSON 对象（用于决定是否重试） */
@@ -204,6 +217,53 @@ export function dedupeConflicts(conflicts: Conflict[]): Conflict[] {
   return out;
 }
 
+/** 从最新用户回复里回填确定性字段，避免模型话术确认了但 state 漏写。 */
+function patchStateFromUserMessage(state: HiringState, text: string): void {
+  if (!text) return;
+  if (!state.constraints.budget.trim()) {
+    const daily = parseDailyWage(text);
+    if (daily !== null) {
+      state.constraints.budget = `${daily}元/天`;
+      return;
+    }
+    const monthly = parseMonthlySalary(text);
+    if (monthly !== null) {
+      state.constraints.budget =
+        monthly[0] === monthly[1]
+          ? `${Math.round(monthly[0])}元/月`
+          : `${Math.round(monthly[0])}-${Math.round(monthly[1])}元/月`;
+    }
+  }
+}
+
+/** 未达到代码侧交接条件时，禁止回复提前承诺“已可交给 HR”。 */
+function guardHandoffReply(reply: string, handoff: AgentTurnResult["handoff"]): string {
+  if (handoff.ready) return reply;
+  const premature =
+    /(交给\s*HR|交接\s*HR|交付|可交接|可以交接|已可交接|完整梳理|已完整|已经完整)/i;
+  if (!premature.test(reply)) return reply;
+
+  const sentences = reply.match(/[^。！？!?]+[。！？!?]?/g) ?? [reply];
+  const kept = sentences
+    .filter((sentence) => !premature.test(sentence))
+    .join("")
+    .trim();
+  const missing = handoff.missing_for_handoff.slice(0, 3).join("、");
+  const correction = missing
+    ? `目前还不能标记为已交接 HR，仍需补齐：${missing}。`
+    : "目前还不能标记为已交接 HR，仍需补齐右侧交接条件。";
+  return kept ? `${kept}\n\n${correction}` : correction;
+}
+
+function latestUserText(
+  history: { role: "user" | "assistant"; content: string }[]
+): string {
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    if (history[i].role === "user") return history[i].content;
+  }
+  return "";
+}
+
 function normalizeChoices(v: unknown): ChoiceGroup[] {
   if (!Array.isArray(v)) return [];
   return v
@@ -225,6 +285,7 @@ function normalizeState(
 ): HiringState {
   if (!s) return prev;
   return {
+    recruit_type: asRecruitType(s.recruit_type, prev.recruit_type),
     role_title: str(s.role_title, prev.role_title),
     background: str(s.background, prev.background),
     kpi_ownership: str(s.kpi_ownership, prev.kpi_ownership),
@@ -277,6 +338,23 @@ function normalizeConflict(c: Partial<Conflict>, i: number): Conflict {
     tradeoff: str(c.tradeoff, ""),
     owner: c.owner === "hr" ? "hr" : "business",
   };
+}
+
+const RECRUIT_TYPES: HiringState["recruit_type"][] = [
+  "",
+  "社招",
+  "校招",
+  "转正实习",
+  "日常实习",
+];
+function asRecruitType(
+  v: unknown,
+  fallback: HiringState["recruit_type"]
+): HiringState["recruit_type"] {
+  return typeof v === "string" &&
+    (RECRUIT_TYPES as string[]).includes(v)
+    ? (v as HiringState["recruit_type"])
+    : fallback;
 }
 
 function str(v: unknown, fallback: string): string {

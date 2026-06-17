@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runTurn } from "@/lib/agent";
+import { requireAccess } from "@/lib/access";
 import type { HiringState } from "@/lib/schema";
 
 export const runtime = "nodejs";
@@ -10,6 +11,9 @@ interface ChatRequestBody {
 }
 
 export async function POST(req: NextRequest) {
+  const denied = requireAccess(req);
+  if (denied) return denied;
+
   try {
     const body = (await req.json()) as ChatRequestBody;
     if (!Array.isArray(body.history)) {
