@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { normalizeResult, dedupeConflicts, isParseable } from "./agent";
+import { applyWorkflow, normalizeResult, dedupeConflicts, isParseable } from "./agent";
 import type { Conflict } from "./schema";
 import { emptyState, type HiringState } from "./schema";
 import { mockTurn } from "./mock";
@@ -113,6 +113,97 @@ describe("dedupeConflicts", () => {
   it("完全相同的描述被去掉", () => {
     const out = dedupeConflicts([mk("a", "马上出活与长期培养矛盾"), mk("b", "马上出活与长期培养矛盾")]);
     expect(out).toHaveLength(1);
+  });
+});
+
+describe("applyWorkflow handoff guard", () => {
+  it("从最新用户消息回填实习日薪，避免右侧误判预算缺失", () => {
+    const state = emptyState();
+    state.recruit_type = "日常实习";
+    state.role_title = "AI 产品实习生";
+    state.core_tasks = ["协助完成 toB 金融 Agent 工作台产品设计"];
+    state.constraints.timeline = "一周内到岗，实习 3 个月";
+    state.requirements = [
+      {
+        id: "req-1",
+        raw: "懂金融或 AI Agent",
+        category: "leveled",
+        issues: [],
+        clarified: "理解金融风控或 Agent 记忆的基本概念",
+        priority: "must_have",
+        business_scenario: "toB 金融 Agent 工作台设计",
+        candidate_evidence: "能解释相关概念并完成场景拆解",
+        interview_check: "给一个金融风控 Agent 场景题，看候选人拆解思路",
+        derivation: "来自工作台产品设计任务",
+        owner: "business",
+        needs_hr_calibration: false,
+        confidence: "confirmed",
+      },
+    ];
+
+    const result = applyWorkflow(
+      {
+        reply: "好的，我会把这份初稿交给HR。",
+        state,
+        diagnosis: {
+          vague_terms: [],
+          missing_info: [],
+          conflicts_found: [],
+          questions_asked: [],
+        },
+        handoff: { ready: false, missing_for_handoff: [] },
+        choices: [],
+      },
+      "我的选择：是，200元/天就是最终预算"
+    );
+
+    expect(result.state.constraints.budget).toBe("200元/天");
+    expect(result.handoff.ready).toBe(true);
+    expect(result.reply).toContain("交给HR");
+  });
+
+  it("未达到代码侧交接条件时，过滤提前交接话术", () => {
+    const state = emptyState();
+    state.recruit_type = "社招";
+    state.role_title = "推荐算法工程师";
+    state.kpi_ownership = "对 CTR 提升 5% 负责";
+    state.milestone_90 = "召回模型上线";
+    state.internal_check = "内部无人可转";
+    state.requirements = [
+      {
+        id: "req-1",
+        raw: "能独立负责推荐召回",
+        category: "behavioral",
+        issues: [],
+        clarified: "能独立负责推荐召回模型迭代",
+        priority: "must_have",
+        business_scenario: "推荐召回优化",
+        candidate_evidence: "主导过召回项目上线",
+        interview_check: "请讲一个推荐召回项目",
+        derivation: "来自 CTR 目标",
+        owner: "business",
+        needs_hr_calibration: false,
+        confidence: "confirmed",
+      },
+    ];
+
+    const result = applyWorkflow({
+      reply: "好的，我已完整梳理了这个岗位的需求。我会把这份初稿交给HR，请他们做最终校准。",
+      state,
+      diagnosis: {
+        vague_terms: [],
+        missing_info: [],
+        conflicts_found: [],
+        questions_asked: [],
+      },
+      handoff: { ready: false, missing_for_handoff: [] },
+      choices: [],
+    });
+
+    expect(result.handoff.ready).toBe(false);
+    expect(result.handoff.missing_for_handoff).toContain("预算范围（需具体数字/区间，如月薪；“待HR定”不算）");
+    expect(result.reply).not.toContain("交给HR");
+    expect(result.reply).toContain("目前还不能标记为已交接 HR");
   });
 });
 

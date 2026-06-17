@@ -22,7 +22,13 @@ function getClient(): OpenAI {
     );
   }
   if (!client) {
-    client = new OpenAI({ apiKey: API_KEY, baseURL: BASE_URL });
+    // 显式超时 + 有限重试：避免某次请求卡死把整轮（含离线测评）吊死
+    client = new OpenAI({
+      apiKey: API_KEY,
+      baseURL: BASE_URL,
+      timeout: 90_000,
+      maxRetries: 2,
+    });
   }
   return client;
 }

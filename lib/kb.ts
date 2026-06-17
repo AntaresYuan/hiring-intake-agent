@@ -108,6 +108,17 @@ export function parseMonthlySalary(text: string): [number, number] | null {
   return nums.length ? [nums[0], nums[0]] : null;
 }
 
+/** 解析实习日薪（元/天）。社招/校招按月薪，实习按日薪——别让月薪解析器误判实习"没预算"。 */
+export function parseDailyWage(text: string): number | null {
+  if (!text) return null;
+  const s = text.replace(/\s/g, "");
+  const perDay = s.match(/(\d+(?:\.\d+)?)(?:元|块)?\/?(?:天|日)/); // 200元/天 · 200/天 · 200块每天
+  if (perDay) return +perDay[1];
+  const daily = s.match(/日薪(\d+(?:\.\d+)?)/); // 日薪200
+  if (daily) return +daily[1];
+  return null;
+}
+
 const SENIOR_SIGNALS = [
   "大厂",
   "独立",

@@ -15,6 +15,7 @@ import HandoffPanel from "./components/HandoffPanel";
 import ChoiceBlock from "./components/ChoiceBlock";
 import ExportPanel from "./components/ExportPanel";
 import SessionRail from "./components/SessionRail";
+import AccessGate from "./components/AccessGate";
 import {
   type SessionMeta,
   type StoredSession,
@@ -30,7 +31,7 @@ const TABS = [
   { key: "diagnosis", label: "诊断看板" },
   { key: "state", label: "需求初稿" },
   { key: "handoff", label: "HR 交接视图" },
-  { key: "export", label: "初版 JD / 面试" },
+  { key: "export", label: "JD / 面试 / 评估" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 
@@ -246,6 +247,7 @@ export default function Home() {
   }
 
   return (
+    <AccessGate>
     <div className="flex h-[100dvh] flex-col bg-gray-50 text-gray-900">
       <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
         <div>
@@ -437,5 +439,6 @@ export default function Home() {
         )}
       </div>
     </div>
+    </AccessGate>
   );
 }

@@ -2,6 +2,9 @@
 // 设计原则（见项目记忆）：单 Agent + 持续更新的结构化状态，而非只依赖长 Prompt。
 // 每项要求必须可追溯：业务目标 → 成功结果 → 任务 → 能力 → 行为 → 候选人证据 → 面试验证。
 
+/** 招聘类型：决定该问什么、DoD 怎么裁、什么算"类型×要求错配"。空=尚未确认。 */
+export type RecruitType = "" | "社招" | "校招" | "转正实习" | "日常实习";
+
 /** 要求的固化类型：决定用哪种归一化方法 */
 export type RequirementCategory =
   | "quantifiable" // 可直接量化（薪资/年限/到岗/地点/周期/规模）
@@ -65,6 +68,7 @@ export interface Constraints {
 
 /** 完整的”业务招聘需求初稿”结构化状态 */
 export interface HiringState {
+  recruit_type: RecruitType; // 招聘类型（社招/校招/转正实习/日常实习）——最先要确认，它 gate 后面所有问题
   role_title: string; // 暂定岗位名（可空，避免过早收敛）
   background: string; // 招聘背景与业务目标
   kpi_ownership: string; // 一句话：岗位对哪个 KPI 负责（HR DoD 第 1 条）
@@ -113,6 +117,7 @@ export interface AgentTurnResult {
 /** 初始空状态 */
 export function emptyState(): HiringState {
   return {
+    recruit_type: "",
     role_title: "",
     background: "",
     kpi_ownership: "",
