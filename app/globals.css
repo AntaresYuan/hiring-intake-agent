@@ -1,13 +1,44 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f7f8fb;
+  --foreground: #161823;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  /* ByteDance/TikTok-inspired palette: neutral product grays with cyan/red accents. */
+  --color-gray-50: #f7f8fb;
+  --color-gray-100: #f1f3f7;
+  --color-gray-200: #e5e8ef;
+  --color-gray-300: #c9ced8;
+  --color-gray-400: #8b95a5;
+  --color-gray-500: #687386;
+  --color-gray-600: #465061;
+  --color-gray-700: #252c38;
+  --color-gray-800: #161823;
+  --color-gray-900: #0f1117;
+
+  --color-amber-50: #e9fbff;
+  --color-amber-100: #ccf7ff;
+  --color-amber-200: #8eecff;
+  --color-amber-500: #00d5ff;
+  --color-amber-600: #00a8d8;
+  --color-amber-700: #007fa3;
+  --color-amber-900: #043547;
+
+  --color-emerald-100: #e5fffb;
+  --color-emerald-500: #00f2ea;
+  --color-emerald-700: #007d78;
+  --color-green-600: #009f98;
+
+  --color-rose-50: #fff0f4;
+  --color-rose-600: #fe2c55;
+  --color-red-50: #fff0f4;
+  --color-red-600: #fe2c55;
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
