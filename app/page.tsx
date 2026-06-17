@@ -31,7 +31,7 @@ const TABS = [
   { key: "diagnosis", label: "诊断看板" },
   { key: "state", label: "需求初稿" },
   { key: "handoff", label: "HR 交接视图" },
-  { key: "export", label: "初版 JD / 面试" },
+  { key: "export", label: "JD / 面试 / 评估" },
 ] as const;
 type TabKey = (typeof TABS)[number]["key"];
 

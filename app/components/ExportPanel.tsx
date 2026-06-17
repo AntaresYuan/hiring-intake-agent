@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { HiringState } from "@/lib/schema";
 
-// 交接产物：按需生成初版 JD + 面试框架（一次 LLM 调用，不进每轮循环）。
+// 交接产物：按需生成初版 JD + 面试框架 + 候选人评估标准（一次 LLM 调用，不进每轮循环）。
 
 function CopyBlock({ title, text }: { title: string; text: string }) {
   const [copied, setCopied] = useState(false);
@@ -42,9 +42,11 @@ export default function ExportPanel({
   ready: boolean;
 }) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ jd: string; interview: string } | null>(
-    null
-  );
+  const [result, setResult] = useState<{
+    jd: string;
+    interview: string;
+    candidate_evaluation: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function generate() {
@@ -59,7 +61,11 @@ export default function ExportPanel({
       });
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "生成失败");
-      setResult({ jd: data.jd, interview: data.interview });
+      setResult({
+        jd: data.jd,
+        interview: data.interview,
+        candidate_evaluation: data.candidate_evaluation,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成失败");
     } finally {
@@ -70,7 +76,7 @@ export default function ExportPanel({
   if (!state) {
     return (
       <div className="p-6 text-sm text-gray-400">
-        澄清推进后，这里可一键生成给 HR 的初版 JD + 面试框架（业务初稿，待 HR 校准）。
+        澄清推进后，这里可一键生成给 HR 的初版 JD、面试框架和候选人评估标准（业务初稿，待 HR 校准）。
       </div>
     );
   }
@@ -83,7 +89,7 @@ export default function ExportPanel({
           disabled={loading}
           className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white disabled:opacity-40"
         >
-          {loading ? "生成中…" : result ? "重新生成" : "生成初版 JD + 面试框架"}
+          {loading ? "生成中…" : result ? "重新生成" : "生成 JD + 面试 + 评估"}
         </button>
         {!ready && (
           <span className="text-xs text-amber-600">
@@ -100,6 +106,10 @@ export default function ExportPanel({
         <div className="space-y-3">
           <CopyBlock title="初版 JD（业务初稿，待 HR 校准）" text={result.jd} />
           <CopyBlock title="面试框架（初稿）" text={result.interview} />
+          <CopyBlock
+            title="候选人评估标准 / 评分卡（初稿）"
+            text={result.candidate_evaluation}
+          />
         </div>
       )}
     </div>

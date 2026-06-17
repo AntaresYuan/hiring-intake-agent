@@ -60,6 +60,17 @@ describe("assembleFallback", () => {
     expect(interview).toContain("重点验证的取舍");
     expect(interview).toContain("提预算或降资历");
   });
+
+  it("候选人评估标准包含简历核验、面试评分和人工决策边界", () => {
+    const { candidate_evaluation } = assembleFallback(state);
+    expect(candidate_evaluation).toContain("候选人评估标准");
+    expect(candidate_evaluation).toContain("简历证据核验");
+    expect(candidate_evaluation).toContain("面试评分维度");
+    expect(candidate_evaluation).toContain("统一评分锚点");
+    expect(candidate_evaluation).toContain("不做自动淘汰规则");
+    expect(candidate_evaluation).toContain("主导过推荐召回上线");
+    expect(candidate_evaluation).toContain("预算低于职级区间");
+  });
 });
 
 describe("JD few-shot export", () => {
@@ -137,6 +148,45 @@ describe("JD few-shot export", () => {
           ],
           tradeoff_checks: ["确认 AI 深度是产品判断而非只会写 prompt"],
         },
+        candidate_evaluation: {
+          resume_screen: {
+            must_have_checks: [
+              {
+                requirement: "理解大模型能力边界，能推动 AI 产品落地",
+                resume_evidence: "AI 产品上线经历，含指标与个人贡献",
+                pass_signal: "简历能看到从需求到上线的闭环",
+                risk_signal: "只有 prompt 使用经验，缺产品化闭环",
+              },
+            ],
+            preferred_signals: ["电商 AI 产品经验"],
+            hr_review_flags: ["确认职级与薪酬区间"],
+          },
+          interview_scorecard: {
+            dimensions: [
+              {
+                dimension: "AI 产品化判断",
+                weight: "40%",
+                evaluates: "能否把模型能力边界转成业务方案",
+                strong_signal: "能讲清场景、模型边界、指标和复盘",
+                pass_signal: "有相关上线经历但复杂度需确认",
+                risk_signal: "只会描述概念，缺落地证据",
+              },
+            ],
+          },
+          rating_scale: [
+            {
+              score: "5",
+              label: "强匹配",
+              description: "独立做过相近 AI 产品闭环",
+            },
+            {
+              score: "3",
+              label: "基本匹配",
+              description: "有相关经历但需确认迁移性",
+            },
+          ],
+          decision_guidance: ["输出人工面试意见，不替 HR 拍最终录用结论"],
+        },
       },
       state
     );
@@ -147,5 +197,9 @@ describe("JD few-shot export", () => {
     expect(rendered.jd).toContain("有电商 AI 产品经验者优先");
     expect(rendered.interview).toContain("AI 产品化判断");
     expect(rendered.interview).toContain("请讲一个 AI 产品从需求到上线的项目");
+    expect(rendered.candidate_evaluation).toContain("简历证据核验");
+    expect(rendered.candidate_evaluation).toContain("AI 产品上线经历，含指标与个人贡献");
+    expect(rendered.candidate_evaluation).toContain("AI 产品化判断");
+    expect(rendered.candidate_evaluation).toContain("输出人工面试意见");
   });
 });
